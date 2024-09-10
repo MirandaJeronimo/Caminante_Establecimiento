@@ -37,6 +37,7 @@ class Step3Details extends StatelessWidget {
               labelText: 'Nombre del evento',
               labelStyle: TextStyle(color: Colors.grey),
             ),
+            style: TextStyle(color: Colors.grey), // Color del texto ingresado
             onChanged: (value) => onDetailsEntered(value, eventDescription, isFreeEntry, eventPrice),
           ),
           SizedBox(height: 16.0),
@@ -45,6 +46,7 @@ class Step3Details extends StatelessWidget {
               labelText: 'Descripción',
               labelStyle: TextStyle(color: Colors.grey),
             ),
+            style: TextStyle(color: Colors.grey), // Color del texto ingresado
             onChanged: (value) => onDetailsEntered(eventName, value, isFreeEntry, eventPrice),
             maxLines: 4,
           ),
@@ -66,6 +68,7 @@ class Step3Details extends StatelessWidget {
                 labelText: 'Precio COP',
                 labelStyle: TextStyle(color: Colors.grey),
               ),
+              style: TextStyle(color: Colors.grey), // Color del texto ingresado
               onChanged: (value) => onDetailsEntered(eventName, eventDescription, isFreeEntry, value),
               keyboardType: TextInputType.number,
             ),

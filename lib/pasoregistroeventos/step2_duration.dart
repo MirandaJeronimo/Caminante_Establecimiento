@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 
 class Step2Duration extends StatelessWidget {
   final DateTime? startDate;
@@ -39,10 +40,10 @@ class Step2Duration extends StatelessWidget {
                 (date) => onDateTimeSelected(date, startTime, endDate, endTime),
           ),
           SizedBox(height: 16.0),
-          _buildTimePicker(
+          _buildCustomTimePicker(
             context,
             'Hora de inicio',
-            startTime,
+            startTime ?? TimeOfDay.now(),  // Usamos un valor por defecto si es null
                 (time) => onDateTimeSelected(startDate, time, endDate, endTime),
           ),
           SizedBox(height: 16.0),
@@ -53,10 +54,10 @@ class Step2Duration extends StatelessWidget {
                 (date) => onDateTimeSelected(startDate, startTime, date, endTime),
           ),
           SizedBox(height: 16.0),
-          _buildTimePicker(
+          _buildCustomTimePicker(
             context,
             'Hora de finalización',
-            endTime,
+            endTime ?? TimeOfDay.now(),  // Usamos un valor por defecto si es null
                 (time) => onDateTimeSelected(startDate, startTime, endDate, time),
           ),
         ],
@@ -93,26 +94,50 @@ class Step2Duration extends StatelessWidget {
     );
   }
 
-  Widget _buildTimePicker(
-      BuildContext context, String label, TimeOfDay? selectedTime, Function(TimeOfDay) onTimeSelected) {
+  Widget _buildCustomTimePicker(
+      BuildContext context, String label, TimeOfDay selectedTime, Function(TimeOfDay) onTimeSelected) {
     return Row(
       children: [
         Text(label, style: TextStyle(color: Colors.grey)),
         Spacer(),
         TextButton(
-          onPressed: () async {
-            final picked = await showTimePicker(
-              context: context,
-              initialTime: selectedTime ?? TimeOfDay.now(),
-            );
-            if (picked != null) {
-              onTimeSelected(picked);
+          onPressed: () {
+            try {
+              showModalBottomSheet(
+                context: context,
+                builder: (BuildContext context) {
+                  return Container(
+                    height: 250.0,
+                    child: TimePickerSpinner(
+                      is24HourMode: false,
+                      normalTextStyle: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey,
+                      ),
+                      highlightedTextStyle: TextStyle(
+                        fontSize: 24,
+                        color: Colors.pink,
+                      ),
+                      spacing: 50,
+                      itemHeight: 60,
+                      isForce2Digits: true,
+                      time: DateTime(0, 0, 0, selectedTime.hour, selectedTime.minute),
+                      onTimeChange: (time) {
+                        if (time != null) {
+                          onTimeSelected(TimeOfDay(hour: time.hour, minute: time.minute));
+                        }
+                      },
+                    ),
+                  );
+                },
+              );
+            } catch (e) {
+              // Captura cualquier excepción inesperada para depuración
+              print('Error al abrir el TimePicker: $e');
             }
           },
           child: Text(
-            selectedTime != null
-                ? "${selectedTime.hour}:${selectedTime.minute} ${selectedTime.period == DayPeriod.am ? 'AM' : 'PM'}"
-                : 'Seleccionar',
+            "${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')} ${selectedTime.period == DayPeriod.am ? 'AM' : 'PM'}",
             style: TextStyle(color: Colors.pink),
           ),
         ),

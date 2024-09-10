@@ -1,45 +1,109 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_color/flutter_color.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:caminante_establecimiento_firebase2/pasoregistroeventos/step1_color_selection.dart';
-import 'package:caminante_establecimiento_firebase2/pasoregistroeventos/step2_duration.dart';
-import 'package:caminante_establecimiento_firebase2/pasoregistroeventos/step3_details.dart';
-import 'package:caminante_establecimiento_firebase2/pasoregistroeventos/step4_location.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'step1_color_selection.dart';
+import 'step2_duration.dart';
+import 'step3_details.dart';
+import 'step4_location.dart';
 
-class RegistroEvento extends StatefulWidget {
-  const RegistroEvento({super.key});
+class EditarEvento extends StatefulWidget {
+  final Map<String, dynamic> evento;
+
+  EditarEvento({required this.evento});
 
   @override
-  _RegistroEventoState createState() => _RegistroEventoState();
+  _EditarEventoState createState() => _EditarEventoState();
 }
 
-class _RegistroEventoState extends State<RegistroEvento> {
+class _EditarEventoState extends State<EditarEvento> {
   final PageController _pageController = PageController();
-  Color selectedColor = Colors.white; // Color inicial
-  int colorCode = 0; // Código del color inicial (por defecto, 0)
 
-  // Variables para almacenar datos de cada paso
-  DateTime? startDate;
-  TimeOfDay? startTime;
-  DateTime? endDate;
-  TimeOfDay? endTime;
-  String eventName = '';
-  String eventDescription = '';
-  bool isFreeEntry = false;
-  String? eventPrice;
-  String eventLocation = '';
+  late TextEditingController _nombreController;
+  late TextEditingController _descripcionController;
+  late TextEditingController _precioController;
+  late TextEditingController _ubicacionController;
+
+  late Color selectedColor;
+  late int colorCode;
+  late DateTime startDate;
+  late TimeOfDay startTime;
+  late DateTime endDate;
+  late TimeOfDay endTime;
+  late bool isFreeEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar controladores y variables con los datos del evento
+    _nombreController = TextEditingController(text: widget.evento['nombre']);
+    _descripcionController = TextEditingController(text: widget.evento['descripcion']);
+    _precioController = TextEditingController(text: widget.evento['precio']?.toString() ?? '');
+    _ubicacionController = TextEditingController(text: widget.evento['ubicacion']);
+
+    selectedColor = Color(widget.evento['color'] ?? 0xFFFFFFFF);
+    colorCode = widget.evento['color2'] ?? 0;
+    startDate = (widget.evento['fechaInicio'] as Timestamp).toDate();
+    startTime = TimeOfDay.fromDateTime(startDate);
+    endDate = (widget.evento['fechaFin'] as Timestamp).toDate();
+    endTime = TimeOfDay.fromDateTime(endDate);
+    isFreeEntry = widget.evento['entradaLibre'] ?? false;
+  }
+
+  void _saveChanges() async {
+    await FirebaseFirestore.instance
+        .collection('eventos')
+        .doc(widget.evento['id']) // Usar el ID del documento existente
+        .update({
+      'nombre': _nombreController.text,
+      'descripcion': _descripcionController.text,
+      'precio': isFreeEntry ? null : _precioController.text,
+      'entradaLibre': isFreeEntry,
+      'fechaInicio': DateTime(
+        startDate.year,
+        startDate.month,
+        startDate.day,
+        startTime.hour,
+        startTime.minute,
+      ),
+      'fechaFin': DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+        endTime.hour,
+        endTime.minute,
+      ),
+      'ubicacion': _ubicacionController.text,
+      'color': selectedColor.value,
+      'color2': colorCode,
+    });
+
+    Navigator.of(context).pop(); // Regresar a la pantalla de eventos
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('Editar Evento'),
+        backgroundColor: selectedColor, // Usar el color seleccionado como fondo
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            if (_pageController.page == 0) {
+              Navigator.of(context).pop();
+            } else {
+              _pageController.previousPage(
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            }
+          },
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -52,20 +116,7 @@ class _RegistroEventoState extends State<RegistroEvento> {
                     onColorSelected: (color) {
                       setState(() {
                         selectedColor = color;
-                        // Asignar el código del color basado en el color seleccionado
-                        if (color == Colors.pink) {
-                          colorCode = 1;
-                        } else if (color == Colors.blue) {
-                          colorCode = 2;
-                        } else if (color == Colors.yellow) {
-                          colorCode = 3;
-                        } else if (color == Colors.purple) {
-                          colorCode = 4;
-                        } else if (color == Colors.grey) {
-                          colorCode = 5;
-                        } else {
-                          colorCode = 0; // Código por defecto si no coincide con ninguno
-                        }
+                        colorCode = _getColorCode(color);
                       });
                     },
                   ),
@@ -76,32 +127,32 @@ class _RegistroEventoState extends State<RegistroEvento> {
                     endTime: endTime,
                     onDateTimeSelected: (start, startT, end, endT) {
                       setState(() {
-                        startDate = start;
-                        startTime = startT;
-                        endDate = end;
-                        endTime = endT;
+                        startDate = start!;
+                        startTime = startT!;
+                        endDate = end!;
+                        endTime = endT!;
                       });
                     },
                   ),
                   Step3Details(
-                    eventName: eventName,
-                    eventDescription: eventDescription,
+                    eventName: _nombreController.text,
+                    eventDescription: _descripcionController.text,
                     isFreeEntry: isFreeEntry,
-                    eventPrice: eventPrice,
+                    eventPrice: _precioController.text,
                     onDetailsEntered: (name, description, freeEntry, price) {
                       setState(() {
-                        eventName = name;
-                        eventDescription = description;
+                        _nombreController.text = name;
+                        _descripcionController.text = description;
                         isFreeEntry = freeEntry;
-                        eventPrice = price;
+                        _precioController.text = price ?? '';
                       });
                     },
                   ),
                   Step4Location(
-                    eventLocation: eventLocation,
+                    eventLocation: _ubicacionController.text,
                     onLocationEntered: (location) {
                       setState(() {
-                        eventLocation = location;
+                        _ubicacionController.text = location;
                       });
                     },
                   ),
@@ -113,7 +164,7 @@ class _RegistroEventoState extends State<RegistroEvento> {
               child: Center(
                 child: SmoothPageIndicator(
                   controller: _pageController,
-                  count: 4, // Actualizar según el número de pasos
+                  count: 4,
                   effect: WormEffect(
                     activeDotColor: Colors.pink,
                     dotColor: Colors.grey,
@@ -128,33 +179,6 @@ class _RegistroEventoState extends State<RegistroEvento> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.grey, size: 20),
-          onPressed: () {
-            if (_pageController.page == 0) {
-              Navigator.of(context).pop();
-            } else {
-              _pageController.previousPage(
-                duration: Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            }
-          },
-        ),
-        Text(
-          'Registro de Evento',
-          style: GoogleFonts.montserrat(
-            color: Colors.grey,
-            fontSize: 16.0,
-          ),
-        ),
-      ],
     );
   }
 
@@ -175,12 +199,12 @@ class _RegistroEventoState extends State<RegistroEvento> {
                           curve: Curves.easeInOut,
                         );
                       } else {
-                        _saveEvent(); // Guardar el evento cuando esté en la última página
+                        _saveChanges(); // Guardar los cambios cuando esté en la última página
                       }
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _pageController.hasClients && _pageController.page == 3 && eventLocation.isEmpty
+                    backgroundColor: _pageController.hasClients && _pageController.page == 3 && _ubicacionController.text.isEmpty
                         ? Colors.grey
                         : Colors.pink,
                     shape: RoundedRectangleBorder(
@@ -190,9 +214,9 @@ class _RegistroEventoState extends State<RegistroEvento> {
                   ),
                   child: Text(
                     _pageController.hasClients && _pageController.page == 3
-                        ? 'Guardar'
+                        ? 'Guardar Cambios'
                         : 'Siguiente',
-                    style: GoogleFonts.montserrat(
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 14.0,
                     ),
@@ -213,7 +237,7 @@ class _RegistroEventoState extends State<RegistroEvento> {
                   ),
                   child: Text(
                     'Cancelar',
-                    style: GoogleFonts.montserrat(
+                    style: TextStyle(
                       color: Colors.pink,
                       fontSize: 14.0,
                     ),
@@ -227,26 +251,12 @@ class _RegistroEventoState extends State<RegistroEvento> {
     );
   }
 
-  void _saveEvent() {
-    if (eventLocation.isNotEmpty) {
-      FirebaseFirestore.instance.collection('eventos').add({
-        'nombre': eventName,
-        'descripcion': eventDescription ?? 'Sin descripción',
-        'fechaInicio': startDate ?? 'Fecha no especificada',
-        'horaInicio': startTime?.format(context) ?? 'Hora no especificada',
-        'fechaFin': endDate,
-        'horaFin': endTime?.format(context) ?? '',
-        'ubicacion': eventLocation,
-        'entradaLibre': isFreeEntry,
-        'precio': eventPrice,
-        'color': selectedColor.value,
-        'color2': colorCode, // El código de color, si se está usando
-      }).then((value) {
-        print("Evento guardado con éxito en Firestore!");
-        Navigator.of(context).pop(); // Volver a la pantalla anterior
-      }).catchError((error) {
-        print("Error al guardar el evento: $error");
-      });
-    }
+  int _getColorCode(Color color) {
+    if (color == Colors.pink) return 1;
+    if (color == Colors.blue) return 2;
+    if (color == Colors.yellow) return 3;
+    if (color == Colors.purple) return 4;
+    if (color == Colors.grey) return 5;
+    return 0;
   }
 }

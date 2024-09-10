@@ -1,9 +1,12 @@
+import 'package:caminante_establecimiento_firebase2/establecimiento.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';  // Importamos FirebaseAuth
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_color/flutter_color.dart'; // Importa flutter_color
-import 'homepage.dart';
+import 'package:caminante_establecimiento_firebase2/Registro/registro_selector.dart'; // pantalla selector de registro
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +27,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         textTheme: GoogleFonts.montserratTextTheme(
@@ -119,6 +121,48 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController(); // Controlador de email
+  final TextEditingController _passwordController = TextEditingController(); // Controlador de contraseña
+
+  // Método para iniciar sesión con Firebase Authentication
+  Future<void> _signInWithEmailAndPassword() async {
+    try {
+      // Mostrar un indicador de carga durante el inicio de sesión
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Intentar iniciar sesión con Firebase Authentication
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Si la autenticación es exitosa, navegar a la pantalla principal
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const Establecimiento()), // Redirige a la pantalla principal
+      );
+    } on FirebaseAuthException catch (e) {
+      // Ocultar el indicador de carga
+      Navigator.of(context).pop();
+
+      // Mostrar el error al usuario
+      String errorMessage;
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No se encontró un usuario con ese correo.';
+      } else if (e.code == 'wrong-password') {
+        errorMessage = 'Contraseña incorrecta.';
+      } else {
+        errorMessage = 'Error al iniciar sesión. Por favor, inténtalo de nuevo.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,13 +200,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       children: [
                         SizedBox(
-                          height: 60, // Ajusta la altura del TextField
-                          child: _buildTextField(label: 'Correo Electrónico'),
+                          height: 60,
+                          child: _buildTextField(
+                            label: 'Correo Electrónico',
+                            controller: _emailController,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         SizedBox(
-                          height: 60, // Ajusta la altura del TextField
-                          child: _buildPasswordTextField(label: 'Contraseña'),
+                          height: 60,
+                          child: _buildPasswordTextField(
+                            label: 'Contraseña',
+                            controller: _passwordController,
+                          ),
                         ),
                       ],
                     ),
@@ -173,9 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         if (_formKey.currentState?.validate() ?? false) {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(builder: (context) => const HomePage()), // Declarar como constante
-                          );
+                          _signInWithEmailAndPassword(); // Llamar a la función de autenticación
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -195,7 +243,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 10),
                   TextButton(
                     onPressed: () {
-                      // Manejo de navegación a la pantalla de registro si es necesario
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                      );
                     },
                     child: Text(
                       '¿No tienes una cuenta? Regístrate',
@@ -211,12 +261,17 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField({required String label, bool obscureText = false}) {
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    bool obscureText = false,
+  }) {
     return TextFormField(
+      controller: controller,
       obscureText: obscureText,
       style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15), // Ajusta el padding interno
+        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
         labelText: label,
         labelStyle: TextStyle(
           color: HexColor('#b7b7b7'),
@@ -236,12 +291,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildPasswordTextField({required String label}) {
+  Widget _buildPasswordTextField({
+    required String label,
+    required TextEditingController controller,
+  }) {
     return TextFormField(
+      controller: controller,
       obscureText: _obscureText,
       style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15), // Ajusta el padding interno
+        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
         labelText: label,
         labelStyle: TextStyle(
           color: HexColor('#b7b7b7'),

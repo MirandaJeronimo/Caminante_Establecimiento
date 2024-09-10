@@ -1,16 +1,33 @@
 import 'package:flutter/material.dart';
 
-class Step4Location extends StatelessWidget {
-  final String eventLocation;
+class Step4Location extends StatefulWidget {
+  final String? eventLocation;
   final Function(String) onLocationEntered;
-  final Function() onSave;
 
   const Step4Location({
     Key? key,
-    required this.eventLocation,
+    this.eventLocation,
     required this.onLocationEntered,
-    required this.onSave,
   }) : super(key: key);
+
+  @override
+  _Step4LocationState createState() => _Step4LocationState();
+}
+
+class _Step4LocationState extends State<Step4Location> {
+  late TextEditingController _locationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _locationController = TextEditingController(text: widget.eventLocation);
+  }
+
+  @override
+  void dispose() {
+    _locationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,31 +46,18 @@ class Step4Location extends StatelessWidget {
           ),
           SizedBox(height: 16.0),
           TextField(
+            controller: _locationController,
+            style: TextStyle(color: Colors.grey), // Color gris para el texto
             decoration: InputDecoration(
-              labelText: 'Ubicación',
+              labelText: 'Ingresa la ubicación del evento',
               labelStyle: TextStyle(color: Colors.grey),
-            ),
-            onChanged: onLocationEntered,
-          ),
-          Spacer(),
-          Center(
-            child: ElevatedButton(
-              onPressed: onSave,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.pink,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                padding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 30.0),
-              ),
-              child: Text(
-                'Guardar',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14.0,
-                ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.0),
               ),
             ),
+            onChanged: (value) {
+              widget.onLocationEntered(value);
+            },
           ),
         ],
       ),

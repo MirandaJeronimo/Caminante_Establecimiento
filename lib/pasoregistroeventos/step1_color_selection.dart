@@ -81,4 +81,5 @@ class Step1ColorSelection extends StatelessWidget {
       ),
     );
   }
+
 }
